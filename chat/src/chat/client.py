@@ -8,12 +8,10 @@ Created on Jan 29, 2014
 from threading import Thread
 import sys
 import socket
+from chat.server import HOST, PORT, RECV_BUFFER
 
 
 def main():
-    HOST = socket.gethostname()
-    PORT = 14791
-    BUFSIZE = 4096
     ADDR = (HOST, PORT)
     
     tcpCliSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -21,7 +19,7 @@ def main():
     
     def recv():
         while True:
-            data = tcpCliSock.recv(BUFSIZE)
+            data = tcpCliSock.recv(RECV_BUFFER)
             if not data: sys.exit(0)
             print data
     
