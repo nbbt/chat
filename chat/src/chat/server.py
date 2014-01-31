@@ -54,12 +54,19 @@ class ChatServer(object):
         """
         Handle all incoming connections.
         """
-        read_sockets, write_sockets, error_sockets = select.select(self._connection_list, [], [])
+        read_sockets = self._get_read_sockets()
         for sock in read_sockets:
             if sock == self._server_sock:
                 self._handle_new_client()
             else:
                 self._handle_data_from_existing_client(sock)
+    
+    def _get_read_sockets(self):
+        """
+        Return sockets that are ready to read from.
+        """
+        read_sockets, write_sockets, error_sockets = select.select(self._connection_list, [], [])
+        return read_sockets
     
     def _handle_data_from_existing_client(self, client_socket):
         """
