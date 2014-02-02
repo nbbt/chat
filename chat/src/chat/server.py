@@ -7,7 +7,7 @@ import socket
 import select
 
 HOST = socket.gethostname()
-PORT = 14792
+PORT = 14791
 BACKLOG = 5
 RECV_BUFFER = 4096 
 
@@ -16,6 +16,11 @@ class ChatServer(object):
     Simple single threaded chat server. Listens to a specific port and waits for connections.
     Broadcasts client messages to all other connected clients.
     """
+    SOCKET_INDEX = 0
+    ADDR_INDEX = 1
+    MESSAGE_FORMAT = "[%s:%s]: %s"
+    
+    
     def __init__(self, host_name, port, recv_buffer=RECV_BUFFER, backlog=BACKLOG):
         """
         C'tor.
@@ -32,6 +37,7 @@ class ChatServer(object):
         self.port = port
         self.recv_buffer = recv_buffer
         self.backlog = backlog
+        self._connected_clients = []
 
     def start(self):
         """
@@ -48,7 +54,14 @@ class ChatServer(object):
         self._server_sock = socket.socket()
         self._server_sock.bind((self.host_name, self.port))
         self._server_sock.listen(BACKLOG)
-        self._connection_list = [self._server_sock]
+
+    def _get_connected_sockets(self):
+        """
+        @return: All connected sockets including server socket.
+        @rtype: list<socket.socket>
+        """
+        return [self._server_sock] +\
+                [connection[ChatServer.SOCKET_INDEX] for connection in self._connected_clients]
 
     def _handle_connections(self):
         """
@@ -65,7 +78,8 @@ class ChatServer(object):
         """
         Return sockets that are ready to read from.
         """
-        read_sockets, write_sockets, error_sockets = select.select(self._connection_list, [], [])
+        read_sockets, write_sockets, error_sockets =\
+                                    select.select(self._get_connected_sockets(), [], [])
         return read_sockets
     
     def _handle_data_from_existing_client(self, client_socket):
@@ -75,9 +89,13 @@ class ChatServer(object):
         @type client_socket: socket.socket
         """
         data = client_socket.recv(self.recv_buffer)
+        addr = self._find_addr(client_socket)
+        formatted_message = self._format_message_from_user(data, addr)
         if data:
-            self._broadcast_message(client_socket, data)
-            print "[] sent data\n" 
+            self._broadcast_message(client_socket, formatted_message)
+            print "[%s:%s] sent data\n" %self._find_addr(client_socket)
+        else:
+            self._disconnect_client(client_socket)
 
     def _handle_new_client(self):
         """
@@ -85,8 +103,8 @@ class ChatServer(object):
         """
         new_client_socket, new_addr = self._server_sock.accept()
         
-        self._connection_list.append(new_client_socket)
-        self._broadcast_message(new_client_socket, "[%s:%s] entered room\n" %new_addr)
+        self._connected_clients.append((new_client_socket, new_addr))
+        self._broadcast_message(new_client_socket, self._format_connected_message(new_addr))
         print "[%s:%s] connected\n" % new_addr
 
     def _broadcast_message(self, messaging_socket, message):
@@ -98,8 +116,8 @@ class ChatServer(object):
         @param message: The message to broadcats.
         @type message: str.
         """
-        for client_socket in self._connection_list:
-            if client_socket != messaging_socket and client_socket != self._server_sock:
+        for client_socket, _ in self._connected_clients:
+            if client_socket != messaging_socket:
                 self._send_to_client(client_socket, message)
                 
     def _send_to_client(self, client_socket, message):
@@ -121,11 +139,54 @@ class ChatServer(object):
         @param client_socket: the socket of the client to disconnect.  
         @type client_socket: socket.socket.
         """
+        addr = self._find_addr(client_socket)
         client_socket.close()
-        self._connection_list.remove()
+        self._connected_clients.remove((client_socket, addr))
+        self._broadcast_message(self._server_sock, self._format_disconnected_message(addr))
+        
+    def _find_addr(self, client_socket):
+        """
+        @return: The address of the given socket or None if the socket doen't exist in connected
+        clients list.
+        @rtype: tuple
+        """
+        for socket, addr in self._connected_clients:
+            if socket == client_socket:
+                return addr
+            
+        return None
+        
+    def _format_message_from_user(self, message, sender_addr):
+        """
+        Return the message in the right format, ready for sending to the clients.
+        @param message: The message to format, as received from the client.
+        @type message: str.
+        @param sender_addr: the address of the sender client.
+        @type sender_addr: tuple<str, str>
+        """
+        return "[%s:%s]: " %sender_addr + message
+    
+    def _format_connected_message(self, addr):
+        """
+        Return appropriate message about the client with the given address that connected the chat.
+        @param addr: The address of the user that connected to the chat.
+        @type addr: (str, str)
+        """
+        return "[%s:%s] connected" %addr
+    
+    def _format_disconnected_message(self, addr):
+        """c
+        Return appropriate message about the client with the given address that disconnected the 
+        chat.
+        @param addr: The address of the user that connected to the chat.
+        @type addr: (str, str)
+        """
+        return "[%s:%s] disconnected" %addr
+    
+        
+    
                 
 if __name__ == "__main__":
     ChatServer(HOST, PORT).start()
-    
         
         
