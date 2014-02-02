@@ -78,12 +78,13 @@ class ChatClient(object):
         Wait for messages from the user. Send each message to the server. 
         """
         while True:
-            data = raw_input('> ')
+            data = raw_input()
             if not data: 
                 break
             self.socket.send(data)
         
         self.socket.close()
+    
     
 
 if __name__ == "__main__":
