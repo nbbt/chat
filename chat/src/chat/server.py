@@ -88,13 +88,15 @@ class ChatServer(object):
         @param client_socket: The socket from which the data is to be received.
         @type client_socket: socket.socket
         """
-        data = client_socket.recv(self.recv_buffer)
-        addr = self._find_addr(client_socket)
-        formatted_message = self._format_message_from_user(data, addr)
-        if data:
+        try:
+            data = client_socket.recv(self.recv_buffer)
+            addr = self._find_addr(client_socket)
+            formatted_message = self._format_message_from_user(data, addr)
+            if not data:
+                raise NoDataError()
             self._broadcast_message(client_socket, formatted_message)
             print "[%s:%s] sent data\n" %self._find_addr(client_socket)
-        else:
+        except (socket.error, NoDataError):
             self._disconnect_client(client_socket)
 
     def _handle_new_client(self):
@@ -183,8 +185,13 @@ class ChatServer(object):
         """
         return "[%s:%s] disconnected" %addr
     
-        
-    
+class NoDataError(Exception):
+    """
+    Raised when socket.recv doesn't throw exception but there is no data. Not supposed to happen but
+    just in case...
+    """ 
+    pass
+
                 
 if __name__ == "__main__":
     ChatServer(HOST, PORT).start()

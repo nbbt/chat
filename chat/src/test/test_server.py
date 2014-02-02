@@ -79,15 +79,47 @@ class ChatServerTest(unittest.TestCase):
         self.assertSequenceEqual(expected_msgs3, self.client3.received_data,
                         "Client should get all messages the other clients sent")
         
-    def test_client_disconnected(self):
+    def test_recv_throws_exception(self):
         """
-        Check that if a client disconnects the server doesn't crash, sends a message about it
-        to other clients and keeps working normally.
+        Check that if while trying to receive a message from the client exception is thrown,
+        the server doesn't crash and keeps working normally.
         """
-        def error(self, message):
+        def bad_recv(self, message):
             raise Exception()
         
-        self.client1.server_socket.send = error
+        self.client1.server_socket.recv = bad_recv
+        message = "Hi"
+        self.client2.send_data(message)
+        self.server._handle_connections()
+        self.assertIn(self.server._format_message_from_user(message, self.addr2),
+                      self.client3.received_data,
+                      "Clients should still get messages after one of the disconnects.")
+        
+    def test_recv_returns_none(self):
+        """
+        Check that if while trying to receive a message from the client None is returned,
+        the server doesn't crash and keeps working normally.
+        """
+        def bad_recv(self, message):
+            return None
+        
+        self.client1.server_socket.recv = bad_recv
+        message = "Hi"
+        self.client2.send_data(message)
+        self.server._handle_connections()
+        self.assertIn(self.server._format_message_from_user(message, self.addr2),
+                      self.client3.received_data,
+                      "Clients should still get messages after one of the disconnects.")
+
+    def test_send_throws_exception(self):
+        """
+        Check that if it it possible to send a message to one client the server doesn't crash and 
+        keeps working normally.
+        """
+        def bad_send(self, message):
+            raise Exception()
+        
+        self.client1.server_socket.send = bad_send
         message = "Hi"
         self.client2.send_data(message)
         self.server._handle_connections()
@@ -97,8 +129,9 @@ class ChatServerTest(unittest.TestCase):
         self.assertIn(self.server._format_message_from_user(message, self.addr2),
                       self.client3.received_data,
                       "Clients should still get messages after one of the disconnects.")
-        
-        
+
+
+    
     def _remove_connectiong_messages(self):
         """
         Remove all new user connections messages from the received messages (by the clients).

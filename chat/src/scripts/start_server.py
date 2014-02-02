@@ -16,4 +16,4 @@ def get_option_parser():
 if __name__ == "__main__":
     (options, args) = get_option_parser().parse_args()
     print "Starting server, using port %d" %(options.port)
-    ChatServer(HOST, options.port)
+    ChatServer(HOST, options.port).start()
