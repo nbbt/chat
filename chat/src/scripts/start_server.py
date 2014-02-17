@@ -11,9 +11,11 @@ def get_option_parser():
     parser = OptionParser()
     parser.add_option("-p", "--port", dest="port", type="int",
                       help="The port to listen on", default=PORT)
+    parser.add_option("-o", "--host", dest="host", type="string",
+                      help="The host name", default=HOST)
     return parser
 
 if __name__ == "__main__":
     (options, args) = get_option_parser().parse_args()
-    print "Starting server, using port %d" %(options.port)
+    print "Starting server (host name - %s) using port %d" %(options.host, options.port)
     ChatServer(HOST, options.port).start()

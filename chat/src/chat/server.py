@@ -177,7 +177,7 @@ class ChatServer(object):
         return "[%s:%s] connected" %addr
     
     def _format_disconnected_message(self, addr):
-        """c
+        """
         Return appropriate message about the client with the given address that disconnected the 
         chat.
         @param addr: The address of the user that connected to the chat.

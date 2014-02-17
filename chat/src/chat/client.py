@@ -29,6 +29,7 @@ class ChatClient(object):
         self.host_name = host_name
         self.port = port
         self.recv_buffer = recv_buffer    
+        self._please_close = False
         
     def start(self):
         """
@@ -53,11 +54,18 @@ class ChatClient(object):
         """
         Wait for messages from the server and handle them.
         """ 
-        while True:
+        while not self._please_close:
             data = self.socket.recv(RECV_BUFFER)
             if not data: 
-                sys.exit(0)
+                break
             self._handle_message_from_server(data)
+        
+        self._close()
+        
+    def _close(self):
+        self._please_close = True
+        self._user_message_thread.join()
+        self.socket.close()
 
     def _handle_message_from_server(self, message):
         """
@@ -71,20 +79,20 @@ class ChatClient(object):
         """
         Start another thread to handle messages from the user.
         """
-        Thread(target=self._handle_user_messages).start()
+        self._user_message_thread = Thread(target=self._handle_user_messages)
+        self._user_message_thread.start()
         
     def _handle_user_messages(self):
         """
         Wait for messages from the user. Send each message to the server. 
         """
-        while True:
+        while not self._please_close:
             data = raw_input()
             if not data: 
-                break
-            self.socket.send(data)
+                self._please_close = True
+            else:
+                self.socket.send(data)
         
-        self.socket.close()
-    
     
 
 if __name__ == "__main__":

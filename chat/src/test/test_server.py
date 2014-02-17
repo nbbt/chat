@@ -5,7 +5,6 @@ Created on Jan 30, 2014
 '''
 import unittest
 from chat.server import ChatServer, HOST, PORT
-import re
 
 FAKE_ADDR = ("1.2.3.4", "8456")
 
